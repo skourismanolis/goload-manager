@@ -1,4 +1,4 @@
-module github.com/goload-manager
+module github.com/skourismanolis/goload-manager
 
 go 1.17
 
