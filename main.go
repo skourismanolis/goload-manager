@@ -1,80 +1,67 @@
 package main
 
 import (
-	"fmt"
-	"strings"
+	// "fmt"
+	// "strings"
+
+	"math"
+	"math/rand"
+	"sync"
 	"time"
 
-	"github.com/rivo/tview"
+	"github.com/gosuri/uiprogress"
+	// "github.com/skourismanolis/goload-manager/test"
 )
 
-type Progress struct {
-	textView *tview.TextView
-	full     int
-	limit    int
-	progress chan int
+func initBar(name string) *uiprogress.Bar {
+	bar := uiprogress.AddBar(100) // Add a new bar
+	// optionally, append and prepend completion and elapsed time
+	bar.Empty = '_'
+	bar.Fill = '#'
+	bar.PrependFunc(func(b *uiprogress.Bar) string {
+		return name
+	})
+	bar.AppendCompleted()
+	// bar.PrependElapsed()
+	return bar
 }
 
-// full is the maximum amount of value can be sent to channel
-// limit is the progress bar size
-func (p *Progress) Init(full int, limit int) chan int {
-	p.progress = make(chan int)
-	p.full = full
-	p.limit = limit
-
-	go func() { // Simple channel status gauge (progress bar)
-		progress := 0
-		for {
-			progress += <-p.progress
-
-			if progress > full {
-				break
-			}
-
-			x := progress * limit / full
-			p.textView.Clear()
-			_, _ = fmt.Fprintf(p.textView, "channel status:  %s%s %d/%d",
-				strings.Repeat("■", x),
-				strings.Repeat("□", limit-x),
-				progress, full)
-
-		}
-	}()
-
-	return p.progress
+func init() {
+	uiprogress.Start() // start rendering
 }
 
 func main() {
-	app := tview.NewApplication()
-	textView := tview.NewTextView().
-		SetChangedFunc(func() {
-			app.Draw()
-		})
+	var wg sync.WaitGroup
 
-	textView.SetBorder(true)
-	// textView.SetBackgroundColor(tcell.ColorDefault)
+	rand.Seed(time.Now().Unix())
 
-	progress := Progress{textView: textView}
-	progChan := progress.Init(360, 20)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		bar := initBar("testo.exe")
 
-	go func() { // update progress bar
+		for bar.CompletedPercent() < 100 {
+			current := bar.Current()
 
-		i := 0
-
-		for {
-			i++
-			progChan <- 1
-
-			if i > progress.full {
-				close(progChan)
-				break
-			}
-
-			time.Sleep(100 * time.Millisecond)
+			bar.Set(int(math.Min(float64(current)+float64(rand.Intn(5)), 100)))
+			time.Sleep(time.Millisecond * time.Duration(rand.Intn(400)))
 		}
+
 	}()
 
-	if err := app.SetRoot(textView, true).SetFocus(textView).Run(); err != nil {
-		panic(err)
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		bar := initBar("picture.jpeg")
+
+		for bar.CompletedPercent() < 100 {
+			current := bar.Current()
+
+			bar.Set(int(math.Min(float64(current)+float64(rand.Intn(5)), 100)))
+			time.Sleep(time.Millisecond * time.Duration(rand.Intn(300)))
+		}
+
+	}()
+
+	wg.Wait()
 }
