@@ -19,7 +19,7 @@ func initBar(resp *grab.Response) *uiprogress.Bar {
 	bar.Empty = '_'
 	bar.Fill = '#'
 	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		return name
+		return resp.Filename
 	})
 	bar.AppendCompleted()
 	// bar.PrependElapsed()
