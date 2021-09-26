@@ -1,9 +1,6 @@
 package main
 
 import (
-	// "fmt"
-	// "strings"
-
 	"fmt"
 	"strings"
 	"sync"
@@ -20,17 +17,25 @@ func initBar(download *grab.Response) *uiprogress.Bar {
 	bar.Empty = '_'
 	bar.Fill = '#'
 	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		return download.Filename
+		tmp := strings.Split(download.Filename, "/")
+		return tmp[len(tmp)-1]
 	})
-	bar.AppendCompleted()
+	bar.AppendFunc(func(b *uiprogress.Bar) string {
+		eta := ""
+		if time.Until(download.ETA()) >= 0 {
+			eta = time.Until(download.ETA()).Round(time.Second).String()
+		}
+
+		progress := fmt.Sprintf("%.1f", download.Progress()*100)
+		rate := fmt.Sprintf("%.2f", download.BytesPerSecond())
+		return progress + "% " + eta + " " + rate
+	})
+	// bar.AppendCompleted()
 	// bar.PrependElapsed()
 	return bar
 }
 
-func monitorDownload(download *grab.Response) {
-	bar := initBar(download)
-
-	fmt.Println("asd")
+func monitorDownload(download *grab.Response, bar *uiprogress.Bar) {
 	t := time.NewTicker(time.Millisecond * 50)
 	defer t.Stop()
 
@@ -38,9 +43,9 @@ Loop:
 	for {
 		select {
 		case <-t.C:
-			fmt.Println(download.Progress())
 			bar.Set(int(download.Progress() * 100))
 		case <-download.Done:
+			bar.Set(100)
 			// download is complete
 			break Loop
 		}
@@ -48,35 +53,46 @@ Loop:
 
 }
 
-func init() {
-	uiprogress.Start() // start rendering
-}
+// func init() {
+// }
 
 func main() {
+	uiprogress.Start() // start rendering
 	var wg sync.WaitGroup
 
 	client := grab.NewClient()
 
 	// downloads := make([]int, 0)
 
-	for {
-		var line string
-		fmt.Printf("URL> ")
-		fmt.Scanln(&line)
-		if strings.ToLower(line) == "exit" {
-			break
-		}
+	// for {
+	var line string
+	line = "https://sabnzbd.org/tests/internetspeed/50MB.bin"
+	// line = "https://golang.org/lib/godoc/images/go-logo-blue.svg"
+	// fmt.Printf("URL> ")
+	// fmt.Scanln(&line)
+	// if strings.ToLower(line) == "exit" {
+	// 	break
+	// }
 
-		req, _ := grab.NewRequest("./downloads", line)
-
-		wg.Add(1)
-		go func() {
-			download := client.Do(req)
-			defer wg.Done()
-			monitorDownload(download)
-		}()
-
+	req, err := grab.NewRequest("./downloads/", line)
+	if err != nil {
+		panic(err)
 	}
+
+	download := client.Do(req)
+	bar := initBar(download)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		monitorDownload(download, bar)
+		if err := download.Err(); err != nil {
+			fmt.Println(err)
+			return
+		}
+	}()
+
+	// }
 
 	wg.Wait()
 }
