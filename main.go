@@ -22,17 +22,17 @@ func initBar(download *grab.Response) *uiprogress.Bar {
 		return tmp[len(tmp)-1]
 	})
 	bar.AppendFunc(func(b *uiprogress.Bar) string {
+		progress := fmt.Sprintf("%.1f", download.Progress()*100)
+		rate := bytesize.New(download.BytesPerSecond()).String() + "/s"
+
 		eta := ""
 		if time.Until(download.ETA()) >= 0 {
 			eta = time.Until(download.ETA()).Round(time.Second).String()
 		}
 
-		progress := fmt.Sprintf("%.1f", download.Progress()*100)
-		rate := bytesize.New(download.BytesPerSecond()).String() + "/s"
 		return progress + "% " + rate + " " + eta
 	})
-	// bar.AppendCompleted()
-	// bar.PrependElapsed()
+
 	return bar
 }
 
@@ -65,35 +65,35 @@ func main() {
 
 	// downloads := make([]int, 0)
 
-	// for {
-	var line string
-	line = "https://sabnzbd.org/tests/internetspeed/50MB.bin"
-	// line = "https://golang.org/lib/godoc/images/go-logo-blue.svg"
-	// fmt.Printf("URL> ")
-	// fmt.Scanln(&line)
-	// if strings.ToLower(line) == "exit" {
-	// 	break
-	// }
-
-	req, err := grab.NewRequest("./downloads/", line)
-	if err != nil {
-		panic(err)
-	}
-
-	download := client.Do(req)
-	bar := initBar(download)
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		monitorDownload(download, bar)
-		if err := download.Err(); err != nil {
-			fmt.Println(err)
-			return
+	for {
+		var line string
+		// line = "https://sabnzbd.org/tests/internetspeed/50MB.bin"
+		// line = "https://golang.org/lib/godoc/images/go-logo-blue.svg"
+		fmt.Printf("URL> ")
+		fmt.Scanln(&line)
+		if strings.ToLower(line) == "exit" {
+			break
 		}
-	}()
 
-	// }
+		req, err := grab.NewRequest("./downloads/", line)
+		if err != nil {
+			panic(err)
+		}
+
+		download := client.Do(req)
+		bar := initBar(download)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			monitorDownload(download, bar)
+			if err := download.Err(); err != nil {
+				fmt.Println(err)
+				return
+			}
+		}()
+
+	}
 
 	wg.Wait()
 }
