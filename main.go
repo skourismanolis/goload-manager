@@ -8,6 +8,7 @@ import (
 
 	"github.com/cavaliercoder/grab"
 	"github.com/gosuri/uiprogress"
+	"github.com/inhies/go-bytesize"
 	// "github.com/skourismanolis/goload-manager/test"
 )
 
@@ -27,8 +28,8 @@ func initBar(download *grab.Response) *uiprogress.Bar {
 		}
 
 		progress := fmt.Sprintf("%.1f", download.Progress()*100)
-		rate := fmt.Sprintf("%.2f", download.BytesPerSecond())
-		return progress + "% " + eta + " " + rate
+		rate := bytesize.New(download.BytesPerSecond()).String() + "/s"
+		return progress + "% " + rate + " " + eta
 	})
 	// bar.AppendCompleted()
 	// bar.PrependElapsed()
