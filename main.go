@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/cavaliercoder/grab"
-	"github.com/gosuri/uiprogress"
 	"github.com/inhies/go-bytesize"
 	"github.com/rivo/tview"
 	"github.com/skourismanolis/goload-manager/progress"
@@ -15,81 +14,67 @@ import (
 
 const barSize = 50
 
-func initBar(download *grab.Response) *uiprogress.Bar {
-	bar := uiprogress.AddBar(100) // Add a new bar
-	// optionally, append and prepend completion and elapsed time
-	bar.Empty = '_'
-	bar.Fill = '#'
-	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		tmp := strings.Split(download.Filename, "/")
-		return tmp[len(tmp)-1]
-	})
-	bar.AppendFunc(func(b *uiprogress.Bar) string {
-		progress := fmt.Sprintf("%.1f", download.Progress()*100)
-		rate := bytesize.New(download.BytesPerSecond()).String() + "/s"
-
-		eta := ""
-		if time.Until(download.ETA()) >= 0 {
-			eta = time.Until(download.ETA()).Round(time.Second).String()
-		}
-
-		return progress + "% " + rate + " " + eta
-	})
-
-	return bar
+func getFileName(download *grab.Response) string {
+	tmp := strings.Split(download.Filename, "\\")
+	return tmp[len(tmp)-1]
 }
 
-func monitorDownload(download *grab.Response, bar *uiprogress.Bar) {
-	t := time.NewTicker(time.Millisecond * 50)
-	defer t.Stop()
+func getPercentage(download *grab.Response) string {
+	return fmt.Sprintf("%.1f%%", download.Progress()*100)
+}
 
-Loop:
-	for {
-		select {
-		case <-t.C:
-			bar.Set(int(download.Progress() * 100))
-		case <-download.Done:
-			bar.Set(100)
-			// download is complete
-			break Loop
-		}
+func getRate(download *grab.Response) string {
+	return bytesize.New(download.BytesPerSecond()).String() + "/s"
+}
+
+func getETA(download *grab.Response) string {
+	if time.Until(download.ETA()) >= 0 {
+		return time.Until(download.ETA()).Round(time.Second).String()
+	} else {
+		return ""
 	}
-
 }
 
-func updateTable(app *tview.Application, table *tview.Table) {
+func monitorDownload(app *tview.Application, table *tview.Table, index int, download *grab.Response) {
 	t := time.NewTicker(time.Millisecond * 150)
 	defer t.Stop()
-	prog := 0.0
 
 Loop:
 	for {
 		select {
 		case <-t.C:
 			app.QueueUpdateDraw(func() {
-				table.SetCellSimple(1, 1, progress.GetBar(prog, barSize))
-				table.SetCellSimple(1, 2, fmt.Sprintf("%0.0f%% ", prog*100))
+				updateDownload(table, index, download)
 			})
-			prog += 0.01
-			if prog > 1 {
-				break Loop
-			}
+		case <-download.Done:
+			// download is complete
+			app.QueueUpdateDraw(func() {
+				updateDownload(table, index, download)
+			})
+			break Loop
 		}
+
 	}
 }
 
-// func init() {
-// }
+func updateDownload(table *tview.Table, index int, download *grab.Response) {
+	table.SetCellSimple(index, 0, getFileName(download))
+	table.SetCellSimple(index, 1, progress.GetBar(download.Progress(), barSize))
+	table.SetCellSimple(index, 2, getPercentage(download))
+	table.SetCellSimple(index, 3, getRate(download))
+	table.SetCellSimple(index, 4, getETA(download))
+}
 
 func main() {
 	table := tview.NewTable().SetBorders(true)
-	table.SetBorder(true).SetTitle(" [::b]Goload [::-] Manager ")
+	table.SetBorder(false).SetTitle(" [::b]Goload [::-] Manager ")
 
 	// headers
 	table.SetCellSimple(0, 0, "[::b]Filename")
 	table.SetCellSimple(0, 1, "[::b]Progress")
 	table.SetCellSimple(0, 2, "[::b]% Done")
-	table.SetCellSimple(0, 3, "[::b]ETA")
+	table.SetCellSimple(0, 3, "[::b]Rate")
+	table.SetCellSimple(0, 4, "[::b]ETA")
 
 	table.SetCellSimple(1, 0, "Giorgio_By_Moroder.mp3")
 	table.SetCellSimple(1, 1, progress.GetBar(0, barSize))
@@ -100,49 +85,48 @@ func main() {
 	// flex.SetBorder(true).SetTitle("[red]Hello, [::ub]world!")
 	// flex.AddItem(table, 0, 1, true)
 
-	app := tview.NewApplication()
-	go updateTable(app, table)
-	if err := app.SetRoot(table, true).Run(); err != nil {
-		panic(err)
-	}
+	app := tview.NewApplication().SetRoot(table, true)
 
-	panic("boing")
-	uiprogress.Start() // start rendering
 	var wg sync.WaitGroup
 
 	client := grab.NewClient()
 
 	// downloads := make([]int, 0)
 
-	for {
-		var line string
-		// line = "https://sabnzbd.org/tests/internetspeed/50MB.bin"
-		// line = "https://golang.org/lib/godoc/images/go-logo-blue.svg"
-		fmt.Printf("URL> ")
-		fmt.Scanln(&line)
-		if strings.ToLower(line) == "exit" {
-			break
-		}
+	// for {
+	var line string
+	index := 0
+	line = "https://sabnzbd.org/tests/internetspeed/50MB.bin"
+	// line = "https://golang.org/lib/godoc/images/go-logo-blue.svg"
 
-		req, err := grab.NewRequest("./downloads/", line)
-		if err != nil {
-			panic(err)
-		}
+	// fmt.Printf("URL> ")
+	// fmt.Scanln(&line)
+	// if strings.ToLower(line) == "exit" {
+	// break
+	// }
 
-		download := client.Do(req)
-		bar := initBar(download)
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			monitorDownload(download, bar)
-			if err := download.Err(); err != nil {
-				fmt.Println(err)
-				return
-			}
-		}()
-
+	req, err := grab.NewRequest("./downloads/", line)
+	if err != nil {
+		panic(err)
 	}
 
+	download := client.Do(req)
+
+	wg.Add(1)
+	index++
+	go func() {
+		defer wg.Done()
+		monitorDownload(app, table, index, download)
+		if err := download.Err(); err != nil {
+			fmt.Println(err)
+			return
+		}
+	}()
+
+	// }
+
+	if err := app.Run(); err != nil {
+		panic(err)
+	}
 	wg.Wait()
 }
