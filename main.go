@@ -13,6 +13,8 @@ import (
 	"github.com/skourismanolis/goload-manager/progress"
 )
 
+const barSize = 50
+
 func initBar(download *grab.Response) *uiprogress.Bar {
 	bar := uiprogress.AddBar(100) // Add a new bar
 	// optionally, append and prepend completion and elapsed time
@@ -65,7 +67,7 @@ Loop:
 		select {
 		case <-t.C:
 			app.QueueUpdateDraw(func() {
-				table.SetCellSimple(1, 1, progress.GetBar(prog, 50))
+				table.SetCellSimple(1, 1, progress.GetBar(prog, barSize))
 				table.SetCellSimple(1, 2, fmt.Sprintf("%0.0f%% ", prog*100))
 			})
 			prog += 0.01
@@ -83,12 +85,14 @@ func main() {
 	table := tview.NewTable().SetBorders(true)
 	table.SetBorder(true).SetTitle(" [::b]Goload [::-] Manager ")
 
+	// headers
 	table.SetCellSimple(0, 0, "[::b]Filename")
 	table.SetCellSimple(0, 1, "[::b]Progress")
 	table.SetCellSimple(0, 2, "[::b]% Done")
 	table.SetCellSimple(0, 3, "[::b]ETA")
+
 	table.SetCellSimple(1, 0, "Giorgio_By_Moroder.mp3")
-	table.SetCellSimple(1, 1, "[=======================================>----------]")
+	table.SetCellSimple(1, 1, progress.GetBar(0, barSize))
 	table.SetCellSimple(1, 2, "40%")
 	table.SetCellSimple(1, 3, "5s")
 
