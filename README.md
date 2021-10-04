@@ -7,10 +7,10 @@ This project uses [grab](github.com/cavaliercoder/grab) for downloading and [tce
 Heavily work-in-progress.
 
 ## Future features
- - [] Ability to add new links to download
- - [] Ability to pause and resume a download
- - [] Sort by columns
- - [] Remote! manage downloads on a different machine
- - [] GUI using Qt
+ - [ ] Ability to add new links to download
+ - [ ] Ability to pause and resume a download
+ - [ ] Sort by columns
+ - [ ] Remote! manage downloads on a different machine
+ - [ ] GUI using Qt
 
  ##### This is made in-part as a learning project, that's why the above features are so ambitious D:
