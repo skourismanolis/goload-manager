@@ -9,6 +9,7 @@ import (
 	"github.com/cavaliercoder/grab"
 	"github.com/gosuri/uiprogress"
 	"github.com/inhies/go-bytesize"
+	"github.com/rivo/tview"
 	// "github.com/skourismanolis/goload-manager/test"
 )
 
@@ -54,10 +55,75 @@ Loop:
 
 }
 
+func getBar(progress float64, size int) string {
+	if progress > 1 {
+		progress = 1
+	}
+	ret := "["
+	current := int(float64(size) * progress)
+
+	for i := 0; i < current; i++ {
+		ret += "="
+	}
+	if progress < 1 {
+		ret += ">"
+	}
+
+	for i := 0; i < size-(current+1); i++ {
+		ret += "-"
+	}
+	ret += "]"
+	return ret
+}
+
+func updateTable(app *tview.Application, table *tview.Table) {
+	t := time.NewTicker(time.Millisecond * 150)
+	defer t.Stop()
+	progress := 0.0
+
+Loop:
+	for {
+		select {
+		case <-t.C:
+			app.QueueUpdateDraw(func() {
+				table.SetCellSimple(1, 1, getBar(progress, 50))
+				table.SetCellSimple(1, 2, fmt.Sprintf("%0.0f%% ", progress*100))
+			})
+			progress += 0.01
+			if progress > 1 {
+				break Loop
+			}
+		}
+	}
+}
+
 // func init() {
 // }
 
 func main() {
+	table := tview.NewTable().SetBorders(true)
+	table.SetBorder(true).SetTitle(" [::b]Goload [::-] Manager ")
+
+	table.SetCellSimple(0, 0, "[::b]Filename")
+	table.SetCellSimple(0, 1, "[::b]Progress")
+	table.SetCellSimple(0, 2, "[::b]% Done")
+	table.SetCellSimple(0, 3, "[::b]ETA")
+	table.SetCellSimple(1, 0, "Giorgio_By_Moroder.mp3")
+	table.SetCellSimple(1, 1, "[=======================================>----------]")
+	table.SetCellSimple(1, 2, "40%")
+	table.SetCellSimple(1, 3, "5s")
+
+	// flex := tview.NewFlex()
+	// flex.SetBorder(true).SetTitle("[red]Hello, [::ub]world!")
+	// flex.AddItem(table, 0, 1, true)
+
+	app := tview.NewApplication()
+	go updateTable(app, table)
+	if err := app.SetRoot(table, true).Run(); err != nil {
+		panic(err)
+	}
+
+	panic("boing")
 	uiprogress.Start() // start rendering
 	var wg sync.WaitGroup
 
