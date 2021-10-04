@@ -10,7 +10,7 @@ import (
 	"github.com/gosuri/uiprogress"
 	"github.com/inhies/go-bytesize"
 	"github.com/rivo/tview"
-	// "github.com/skourismanolis/goload-manager/test"
+	"github.com/skourismanolis/goload-manager/progress"
 )
 
 func initBar(download *grab.Response) *uiprogress.Bar {
@@ -55,42 +55,21 @@ Loop:
 
 }
 
-func getBar(progress float64, size int) string {
-	if progress > 1 {
-		progress = 1
-	}
-	ret := "["
-	current := int(float64(size) * progress)
-
-	for i := 0; i < current; i++ {
-		ret += "="
-	}
-	if progress < 1 {
-		ret += ">"
-	}
-
-	for i := 0; i < size-(current+1); i++ {
-		ret += "-"
-	}
-	ret += "]"
-	return ret
-}
-
 func updateTable(app *tview.Application, table *tview.Table) {
 	t := time.NewTicker(time.Millisecond * 150)
 	defer t.Stop()
-	progress := 0.0
+	prog := 0.0
 
 Loop:
 	for {
 		select {
 		case <-t.C:
 			app.QueueUpdateDraw(func() {
-				table.SetCellSimple(1, 1, getBar(progress, 50))
-				table.SetCellSimple(1, 2, fmt.Sprintf("%0.0f%% ", progress*100))
+				table.SetCellSimple(1, 1, progress.GetBar(prog, 50))
+				table.SetCellSimple(1, 2, fmt.Sprintf("%0.0f%% ", prog*100))
 			})
-			progress += 0.01
-			if progress > 1 {
+			prog += 0.01
+			if prog > 1 {
 				break Loop
 			}
 		}
